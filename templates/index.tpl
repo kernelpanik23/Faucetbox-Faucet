@@ -11,6 +11,10 @@
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src='https://www.google.com/recaptcha/api.js'></script>
+
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -69,13 +73,10 @@
         <div class="row">
           <div class="col-md-12">
             <hr />
-            <span style="color: grey;">&copy; 2015 {$faucetname}</span>
+            <span style="color: grey;">&copy; 2016 {$faucetname}</span>
           </div>
         </div>
       </div>
     </footer>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
-    <script src='https://www.google.com/recaptcha/api.js'></script>
   </body>
 </html>

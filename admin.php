@@ -27,10 +27,10 @@ if($_SESSION['admin']){
 
 		// Referral
 
-		$TotalReferralPayout = $mysqli->query("SELECT SUM(amount) FROM faucet_transactions WHERE type = 'Referral'")->fetch_row()[0];
+		$TotalReferralPayout = $mysqli->query("SELECT SUM(amount) FROM faucet_transactions WHERE type = 'Referral Payout'")->fetch_row()[0];
 		$TotalReferralPayout = $TotalReferralPayout ? $TotalReferralPayout : 0;
 
-		$Last24HoursReferralPayout = $mysqli->query("SELECT SUM(amount) FROM faucet_transactions WHERE type = 'Referral' AND timestamp > '$Last24Hours'")->fetch_row()[0];
+		$Last24HoursReferralPayout = $mysqli->query("SELECT SUM(amount) FROM faucet_transactions WHERE type = 'Referral Payout' AND timestamp > '$Last24Hours'")->fetch_row()[0];
 		$Last24HoursReferralPayout = $Last24HoursReferralPayout ? $Last24HoursReferralPayout : 0;
 		$content .= "<h2>Stats</h2>
 		<div class='row'>
@@ -149,6 +149,8 @@ if($_SESSION['admin']){
 					$mysqli->query("UPDATE faucet_settings Set value = '$minreward5' WHERE id = '6'");
 					$mysqli->query("UPDATE faucet_settings Set value = '$maxreward5' WHERE id = '7'");
 					$content .= alert("success", "Rewards was changed successfully.");
+					$minReward = $minreward5;
+					$maxReward = $maxreward5;
 				}
 			}
 		}
@@ -220,25 +222,59 @@ if($_SESSION['admin']){
 		<button type='submit' class='btn btn-primary'>Change</button>
 		</form><br />";
 
-		$content .= "<h3>Keys settings</h3><h4>Faucetbox Key</h4>";
+		$content .= "<h3>Captcha Preference</h3><p>Enable more than one captcha, to simplify the user's experience.<br />We recommend BitCaptcha, to profit from the Captcha itself.</p><br /><br />";
 
-		$faucetboxkey = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '10' LIMIT 1")->fetch_assoc()['value'];
+		if($_GET['c'] == 55){
+			if(!is_numeric($_POST['captchaselect']) OR ($_POST['captchaselect'] < 1 AND $_POST['captchaselect'] > 3)){
+				$content .= alert("danger", "Please select your captcha.");
+			} else {
+				$captchaSelection = $mysqli->real_escape_string($_POST['captchaselect']);
+				$mysqli->query("UPDATE faucet_settings Set value = '$captchaSelection' WHERE id = '23'");
+				$content .= alert("success", "Your preference has been saved.");
+				$captchaSelect = $captchaSelection;
+			}
+		}
+
+		$captchaSelect = $mysqli->query("SELECT value FROM faucet_settings WHERE id = '23'")->fetch_assoc()['value'];
+
+		$content .= "<form method='post' action='?p=as&c=55'>
+		<div class='form-group'>
+			<label class='radio-inline' for='radios-0'>
+				<input type='radio' ".(($captchaSelect == 1) ? 'checked=checked' : '')." id='radios-0' name='captchaselect' value='1'>
+				reCaptcha
+			</label>
+			<label class='radio-inline' for='radios-1'>
+				<input type='radio' ".(($captchaSelect == 2) ? 'checked=checked' : '')." id='radios-1' name='captchaselect' value='2'>
+				BitCaptcha
+			</label>
+			<label class='radio-inline' for='radios-2'>
+				<input type='radio' ".(($captchaSelect == 3) ? 'checked=checked' : '')." id='radios-2' name='captchaselect' value='3'>
+				Both Captchas
+			</label><br />
+		</div>
+		<button type='submit' class='btn btn-primary'>Change</button>
+		</form><br /><br />";
+
+		$content .= "<h3>Keys settings</h3><h4>Faucethub Key</h4>";
+
+		$faucethubkey = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '10' LIMIT 1")->fetch_assoc()['value'];
 
 		if($_GET['c'] == 5){
-			if(!$_POST['faucetboxkey']){
+			if(!$_POST['faucethubkey']){
 				$content .= alert("danger", "Key can't be blank.");
 			} else {
-				$faucetboxkey5 = $mysqli->real_escape_string($_POST['faucetboxkey']);
+				$faucethubkey5 = $mysqli->real_escape_string($_POST['faucethubkey']);
 
-				$mysqli->query("UPDATE faucet_settings Set value = '$faucetboxkey5' WHERE id = '10'");
-				$content .= alert("success", "Faucetbox Key was changed successfully.");
+				$mysqli->query("UPDATE faucet_settings Set value = '$faucethubkey5' WHERE id = '10'");
+				$content .= alert("success", "Faucethub Key was changed successfully.");
+				$faucethubkey = $faucethubkey5;
 			}
 		}
 
 		$content .= "<form method='post' action='?p=as&c=5'>
 		<div class='form-group'>
-			<label>Faucetbox Key</label>
-			<center><input class='form-control' type='text' name='faucetboxkey' style='width: 275px;' value='$faucetboxkey' placeholder='Faucetbox Key'></center>
+			<label>Faucethub Key</label>
+			<center><input class='form-control' type='text' name='faucethubkey' style='width: 275px;' value='$faucethubkey' placeholder='FaucetHub Key'></center>
 		</div>
 		<button type='submit' class='btn btn-primary'>Change</button>
 		</form><br />";
@@ -257,17 +293,63 @@ if($_SESSION['admin']){
 				$mysqli->query("UPDATE faucet_settings Set value = '$reCaptcha_privkey5' WHERE id = '8'");
 				$mysqli->query("UPDATE faucet_settings Set value = '$reCaptcha_pubkey5' WHERE id = '9'");
 				$content .= alert("success", "reCaptcha Keys was changed successfully.");
+				$reCaptcha_privkey = $mysqli->real_escape_string($_POST['recaptcha_privkey']);
+				$reCaptcha_pubkey = $mysqli->real_escape_string($_POST['recaptcha_pubkey']);
 			}
 		}
 
 		$content .= "<form method='post' action='?p=as&c=6'>
 		<div class='form-group'>
 			<label>reCaptcha Private Key</label>
-			<center><input class='form-control' type='text' name='recaptcha_privkey' style='width: 375px;' value='$reCaptcha_privkey' placeholder='reCaptcha Private Key'></center>
+			<center><input class='form-control' type='text' value='".$reCaptcha_privkey."' name='recaptcha_privkey' style='width: 375px;' placeholder='reCaptcha Private Key'></center>
 		</div>
 		<div class='form-group'>
 			<label>reCaptcha Public Key</label>
-			<center><input class='form-control' type='text' name='recaptcha_pubkey' style='width: 375px;' value='$reCaptcha_pubkey' placeholder='reCaptcha Public Key'></center>
+			<center><input class='form-control' type='text' value='".$reCaptcha_pubkey."' name='recaptcha_pubkey' style='width: 375px;' placeholder='reCaptcha Public Key'></center>
+		</div>
+		<button type='submit' class='btn btn-primary'>Change</button>
+		</form><br />";
+
+		$content .= "<h4>BitCaptcha Keys</h4>";
+
+		$bitCaptchaID1 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '19' LIMIT 1")->fetch_assoc()['value'];
+		$bitCaptchaPriKey1 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '20' LIMIT 1")->fetch_assoc()['value'];
+		$bitCaptchaID2 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '21' LIMIT 1")->fetch_assoc()['value'];
+		$bitCaptchaPriKey2 = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '22' LIMIT 1")->fetch_assoc()['value'];
+		
+		if($_GET['c'] == 7){
+			if(!$_POST['bitcaptchaid1'] AND !$_POST['bitCaptchaID2']){
+				$content .= alert("danger", "BitCaptcha Keys cannot be blank.");
+			} else {
+				$bitCaptchaID1 = $mysqli->real_escape_string($_POST['bitcaptchaid1']);
+				$bitCaptchaPriKey1 = $mysqli->real_escape_string($_POST['bitcaptchaprikey1']);
+				$bitCaptchaID2 = $mysqli->real_escape_string($_POST['bitcaptchaid2']);
+				$bitCaptchaPriKey2 = $mysqli->real_escape_string($_POST['bitcaptchaprikey2']);
+
+				$mysqli->query("UPDATE faucet_settings Set value = '$bitCaptchaID1' WHERE id = '19'");
+				$mysqli->query("UPDATE faucet_settings Set value = '$bitCaptchaPriKey1' WHERE id = '20'");
+				$mysqli->query("UPDATE faucet_settings Set value = '$bitCaptchaID2' WHERE id = '21'");
+				$mysqli->query("UPDATE faucet_settings Set value = '$bitCaptchaPriKey2' WHERE id = '22'");
+				$content .= alert("success", "BitCaptcha Keys has been changed successfully.");
+			}
+		}
+
+		$content .= "<form method='post' action='?p=as&c=7'>
+		<div class='form-group'>
+			<label>BitCaptcha ID (Non-WWW)</label>
+			<center><input class='form-control' type='text' value='".$bitCaptchaID1."' name='bitcaptchaid1' style='width: 375px;' placeholder='BitCaptcha ID (Non-WWW) ...'></center>
+		</div>
+		<div class='form-group'>
+			<label>BitCaptcha Private Key (Non-WWW)</label>
+			<center><input class='form-control' type='text' value='".$bitCaptchaPriKey1."' name='bitcaptchaprikey1' style='width: 375px;' placeholder='BitCaptcha Private Key (Non-WWW) ...'></center>
+		</div>
+		<div class='form-group'>
+			<label>BitCaptcha ID (WWW)</label>
+			<center><input class='form-control' type='text' value='".$bitCaptchaID2."' name='bitcaptchaid2' style='width: 375px;' placeholder='BitCaptcha ID (WWW) ...'></center>
+		</div>
+		<div class='form-group'>
+			<label>BitCaptcha Private Key (WWW)</label>
+			<center><input class='form-control' type='text' value='".$bitCaptchaPriKey2."' name='bitcaptchaprikey2' style='width: 375px;' placeholder='BitCaptcha Private Key (Non-WWw) ...'></center>
 		</div>
 		<button type='submit' class='btn btn-primary'>Change</button>
 		</form><br />";
@@ -280,14 +362,18 @@ if($_SESSION['admin']){
 			if($_GET['eb'] == "n"){
 				$mysqli->query("UPDATE faucet_settings Set value = 'no' WHERE id = '11'");
 				$content .= alert("success", "Claiming from Faucet is disabled.");
+				$content .= "<a href='?p=as&eb=y' class='btn btn-default'>Enable claim</a>";
+			} else {
+				$content .= "<a href='?p=as&eb=n' class='btn btn-default'>Disable claim</a>";
 			}
-			$content .= "<a href='?p=as&eb=n' class='btn btn-default'>Disable claim</a>";
 		} else if($claimStatus == "no"){
 			if($_GET['eb'] == "y"){
 				$mysqli->query("UPDATE faucet_settings Set value = 'yes' WHERE id = '11'");
 				$content .= alert("success", "Claiming from Faucet is enabled.");
+				$content .= "<a href='?p=as&eb=n' class='btn btn-default'>Disable claim</a>";
+			} else {
+				$content .= "<a href='?p=as&eb=y' class='btn btn-default'>Enable claim</a>";
 			}
-			$content .= "<a href='?p=as&eb=y' class='btn btn-default'>Enable claim</a>";
 		}
 
 		$content .= "<h4>VPN/Proxy</h4>
@@ -299,14 +385,69 @@ if($_SESSION['admin']){
 			if($_GET['sp'] == "n"){
 				$mysqli->query("UPDATE faucet_settings Set value = 'no' WHERE id = '14'");
 				$content .= alert("success", "VPN/Proxy Shield is disabled.");
+				$content .= "<a href='?p=as&sp=y' class='btn btn-default'>Enable Shield</a>";
+			} else {
+				$content .= "<a href='?p=as&sp=n' class='btn btn-default'>Disable Shield</a>";
 			}
-			$content .= "<a href='?p=as&sp=n' class='btn btn-default'>Disable Shield</a>";
 		} else if($shieldStatus == "no"){
 			if($_GET['sp'] == "y"){
 				$mysqli->query("UPDATE faucet_settings Set value = 'yes' WHERE id = '14'");
 				$content .= alert("success", "VPN/Proxy Shield is enabled.");
+				$content .= "<a href='?p=as&sp=n' class='btn btn-default'>Disable Shield</a>";
+			} else {
+				$content .= "<a href='?p=as&sp=y' class='btn btn-default'>Enable Shield</a>";
 			}
-			$content .= "<a href='?p=as&sp=y' class='btn btn-default'>Enable Shield</a>";
+		}
+
+		// Auto Withdraw
+
+		$content .= "<h4>Auto Withdraw</h4>
+		<p>Enable this feature for auto withdrawal after payout to Faucethub</p>";
+
+		$reverseProxyStatus = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '18' LIMIT 1")->fetch_assoc()['value'];
+
+		if($reverseProxyStatus == "yes"){
+			if($_GET['auwi'] == "n"){
+				$mysqli->query("UPDATE faucet_settings Set value = 'no' WHERE id = '18'");
+				$content .= alert("success", "Auto Withdraw is disabled.");
+				$content .= "<a href='?p=as&auwi=y' class='btn btn-default'>Enable Auto Withdraw</a>";
+			} else {
+				$content .= "<a href='?p=as&auwi=n' class='btn btn-default'>Disable Auto Withdraw</a>";
+			}
+		} else if($reverseProxyStatus == "no"){
+			if($_GET['auwi'] == "y"){
+				$mysqli->query("UPDATE faucet_settings Set value = 'yes' WHERE id = '18'");
+				$content .= alert("success", "Auto Withdraw is enabled.");
+				$content .= "<a href='?p=as&auwi=n' class='btn btn-default'>Disable Auto Withdraw</a>";
+			} else {
+				$content .= "<a href='?p=as&auwi=y' class='btn btn-default'>Enable Auto Withdraw</a>";
+			}
+		}
+
+
+		// Reverse proxy
+
+		$content .= "<h4>Reverse Proxy</h4>
+		<p>If you have CloudFlare enabled, you need to activate this feature</p>";
+
+		$reverseProxyStatus = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '16' LIMIT 1")->fetch_assoc()['value'];
+
+		if($reverseProxyStatus == "yes"){
+			if($_GET['rvp'] == "n"){
+				$mysqli->query("UPDATE faucet_settings Set value = 'no' WHERE id = '16'");
+				$content .= alert("success", "Reverse Proxy is disabled.");
+				$content .= "<a href='?p=as&rvp=y' class='btn btn-default'>Enable Reverse Proxy Feature</a>";
+			} else {
+				$content .= "<a href='?p=as&rvp=n' class='btn btn-default'>Disable Reverse Proxy Feature</a>";
+			}
+		} else if($reverseProxyStatus == "no"){
+			if($_GET['rvp'] == "y"){
+				$mysqli->query("UPDATE faucet_settings Set value = 'yes' WHERE id = '16'");
+				$content .= alert("success", "Reverse Proxy is enabled.");
+				$content .= "<a href='?p=as&rvp=n' class='btn btn-default'>Disable Reverse Proxy Feature</a>";
+			} else {
+				$content .= "<a href='?p=as&rvp=y' class='btn btn-default'>Enable Reverse Proxy Feature</a>";
+			}
 		}
 
 		break;
@@ -420,6 +561,7 @@ if($_SESSION['admin']){
 			$Spacetop = $mysqli->real_escape_string($_POST['spacetop']);
 			$mysqli->query("UPDATE faucet_settings Set value = '$Spacetop' WHERE id = '2'");
 			$content .= alert("success", "HTML Code 'Space top' changed successfully.");
+			$Spacetop = $_POST['spacetop'];
 		}
 	}
 
@@ -439,6 +581,7 @@ if($_SESSION['admin']){
 			$Spaceleft = $mysqli->real_escape_string($_POST['spaceleft']);
 			$mysqli->query("UPDATE faucet_settings Set value = '$Spaceleft' WHERE id = '3'");
 			$content .= alert("success", "HTML Code 'Space left' changed successfully.");
+			$Spaceleft = $_POST['spaceleft'];
 		}
 	}
 
@@ -458,6 +601,7 @@ if($_SESSION['admin']){
 			$Spaceright = $mysqli->real_escape_string($_POST['spaceright']);
 			$mysqli->query("UPDATE faucet_settings Set value = '$Spaceright' WHERE id = '4'");
 			$content .= alert("success", "HTML Code 'Space right' changed successfully.");
+			$Spaceright = $_POST['spaceright'];
 		}
 	}
 
@@ -633,6 +777,7 @@ if($_SESSION['admin']){
 		exit;
 		}
 		unset($_SESSION['token']);
+		$_SESSION['token'] = md5(md5(uniqid().uniqid().mt_rand()));
 
 		if($_POST['username'] AND $_POST['password']){
 			$username = $mysqli->real_escape_string($_POST['username']);
@@ -640,17 +785,26 @@ if($_SESSION['admin']){
 
 			$UserDB = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '12' LIMIT 1")->fetch_assoc()['value'];
 			$PwDB = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '13' LIMIT 1")->fetch_assoc()['value'];
+			$loginAttempt = $mysqli->query("SELECT * FROM faucet_settings WHERE id = '17' LIMIT 1")->fetch_assoc()['value'];
 
-			if($UserDB == $username){
-				if($PwDB == $password){
-					$_SESSION['admin'] = "Admin_".$username."_Password_".$password;
-					header("Location: admin.php");
-					exit;
-				} else {
-					$content .= alert("danger", "Password is wrong.");
-				}
+			$lastLoginSecond = time() - $loginAttempt;
+
+			$mysqli->query("UPDATE faucet_settings Set value = '".time()."' WHERE id = '17'");
+
+			if($lastLoginSecond < 4){
+				$content .= alert("danger", "You're trying to log in very fast.");
 			} else {
-				$content .= alert("danger", "Username is wrong.");
+				if($UserDB == $username){
+					if($PwDB == $password){
+						$_SESSION['admin'] = "Admin_".$username."_Password_".$password;
+						header("Location: admin.php");
+						exit;
+					} else {
+						$content .= alert("danger", "Password is wrong.");
+					}
+				} else {
+					$content .= alert("danger", "Username is wrong.");
+				}
 			}
 		} else if($_POST['username']){
 			$content .= alert("Please fill all fields.");

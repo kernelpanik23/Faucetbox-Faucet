@@ -1,10 +1,10 @@
-# Faucetbox-Faucet
-Bitcoin Faucet integrated with banlist and VPN/Proxy Shield. Use the reCaptcha version 2. Payments to the Account and withdraw over Faucetbox
+# FaucetHub-Faucet
+Bitcoin Faucet integrated with banlist and VPN/Proxy Shield. Use the reCaptcha version 2 and BitCaptcha. Payments to the Account and withdraw over FaucetHub
 
 
 # Mininum Requirements
 
-- PHP >= 5.4 (tested on 5.6)
+- PHP >= 5.4 (tested on 5.6), please do not use PHP 7.0 or higher
 
 - MySQL
 
@@ -31,8 +31,10 @@ Now you're on the admin site and change the configuration to run your faucet!
 A demo is avaible: http://salmen.website/Faucet/
 
 
-# Donations
+# Fee
 
-I'm thankful for a small donation to my BTC Address:
+A small fee of 1 Satoshi will be sent to the owner for each claim. Remvoing license can be done by paying a one-time fee.
 
-15BdNAJN8c5rAdZxWn4zW1vbt4r2vkJSDG
+# Terms and Conditions
+
+You have the rights to modify the code, as long you do not remove the fees/license.
